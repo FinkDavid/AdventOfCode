@@ -1,5 +1,4 @@
-﻿using System.Linq.Expressions;
-using System.Numerics;
+﻿using System.Numerics;
 
 string[] lines = File.ReadAllLines("../input.txt");
 
@@ -8,13 +7,21 @@ char[,] editableMap  = new char[lines.Length, lines[0].Length];
 char[,] biggerMap  = new char[lines.Length + 2, lines[0].Length + 2];
 List<Area> areas = new List<Area>();
 
-Vector2[] directions = new Vector2[]
-{
+Vector2[] directions =
+[
     new Vector2(0, -1), // left
     new Vector2(0, 1),  // right
     new Vector2(-1, 0), // top
     new Vector2(1, 0)   // bottom
-};
+];
+
+Vector2[] diagonals =
+[
+    new Vector2(-1, -1),
+    new Vector2(-1, 1),
+    new Vector2(1, -1),
+    new Vector2(1, 1)
+];
 
 //===============================================================
 // PARSING
@@ -76,18 +83,24 @@ foreach (Area area in areas)
         }
     }
 
+    // Put the area onto an empty map surrounded by at least one empty space
     foreach (Vector2 position in area.positions)
     {
         biggerMap[(int)position.X + 1, (int)position.Y + 1] = area.symbol;
     }
 
+
+    int sides = 0;
     // Calculate the outer corners of the area
     foreach (Vector2 position in area.positions)
     {
-        CheckAndUpdateCorner((int)position.X + 1, (int)position.Y + 1, -1, -1, secondBiggerMap, '.');
-        CheckAndUpdateCorner((int)position.X + 1, (int)position.Y + 1, -1, 1, secondBiggerMap, '.');
-        CheckAndUpdateCorner((int)position.X + 1, (int)position.Y + 1, 1, -1, secondBiggerMap, '.');
-        CheckAndUpdateCorner((int)position.X + 1, (int)position.Y + 1, 1, 1, secondBiggerMap, '.');
+        foreach (Vector2 diagonal in diagonals)
+        {
+            if (CheckAndUpdateCorner((int)position.X + 1, (int)position.Y + 1, (int)diagonal.X, (int)diagonal.Y, secondBiggerMap, '.'))
+            {
+                sides++;
+            }
+        }
     }
 
     // Now calculate the inner corners
@@ -95,21 +108,12 @@ foreach (Area area in areas)
     {
         for (int j = 1; j < biggerMap.GetLength(1) - 1; j++)
         {
-            CheckAndUpdateCorner(i, j, -1, -1, secondBiggerMap, area.symbol);
-            CheckAndUpdateCorner(i, j, -1, 1, secondBiggerMap, area.symbol);
-            CheckAndUpdateCorner(i, j, 1, -1, secondBiggerMap, area.symbol);
-            CheckAndUpdateCorner(i, j, 1, 1, secondBiggerMap, area.symbol);
-        }
-    }
-
-    int sides = 0;
-    for (int i = 0; i < secondBiggerMap.GetLength(0); i++)
-    {
-        for (int j = 0; j < secondBiggerMap.GetLength(1); j++)
-        {
-            if (int.TryParse(secondBiggerMap[i, j].ToString(), out int number))
+            foreach (Vector2 diagonal in diagonals)
             {
-                sides += number;
+                if (CheckAndUpdateCorner(i, j, (int)diagonal.X, (int)diagonal.Y, secondBiggerMap, area.symbol))
+                {
+                    sides++;
+                }
             }
         }
     }
@@ -153,24 +157,17 @@ bool IsInBounds(Vector2 position, char[,] map)
     return position.X >= 0 && position.X < map.GetLength(0) && position.Y >= 0 && position.Y < map.GetLength(1);
 }
 
-void CheckAndUpdateCorner(int x, int y, int offsetX, int offsetY, char[,] secondBiggerMap, char symbol)
+bool CheckAndUpdateCorner(int x, int y, int offsetX, int offsetY, char[,] secondBiggerMap, char symbol)
 {
     if (biggerMap[x + offsetX, y] == symbol && biggerMap[x, y + offsetY] == symbol)
     {
         if (biggerMap[x + offsetX, y + offsetY] == '.')
         {
-            if (secondBiggerMap[x + offsetX, y + offsetY] == '.')
-            {
-                secondBiggerMap[x + offsetX, y + offsetY] = '1';
-            }
-            else
-            {
-                int parsedNumber = int.Parse(secondBiggerMap[x + offsetX, y + offsetY].ToString());
-                parsedNumber++;
-                secondBiggerMap[x + offsetX, y + offsetY] = parsedNumber.ToString()[0];
-            }
+            return true;
         }
     }
+
+    return false;
 }
 
 class Area
@@ -181,7 +178,6 @@ class Area
     public Area(char symbol, Vector2 pos)
     {
         this.symbol = symbol;
-        positions = new List<Vector2>();
-        positions.Add(pos);
+        positions = [pos];
     }
 }
