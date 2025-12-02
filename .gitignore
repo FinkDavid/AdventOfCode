@@ -2,4 +2,6 @@ bin/
 obj/
 *.csproj
 *.sln
+*.idea
+*.x64
 input.txt
